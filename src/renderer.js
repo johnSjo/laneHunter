@@ -2,8 +2,8 @@
 import * as PIXI from 'pixi.js';
 
 const CONTAINER_SELECTOR = '#game';
-const BASE_WIDTH = 1920;
-const BASE_HEIGHT = 1080;
+const BASE_WIDTH = 728;
+const BASE_HEIGHT = 1050;
 
 const LAYERS = [
     'lanes',
@@ -31,6 +31,15 @@ LAYERS.forEach((name) => {
 
 });
 
+function reScale (container) {
+    const xScale = container.offsetWidth / BASE_WIDTH;
+    const yScale = container.offsetHeight / BASE_HEIGHT;
+
+    const scale = Math.min(xScale, yScale);
+
+    container.style.transform = `scale(${scale})`;
+}
+
 function initRenderer (stage, container) {
 
     const renderer = PIXI.autoDetectRenderer(BASE_WIDTH, BASE_HEIGHT, {
@@ -42,7 +51,7 @@ function initRenderer (stage, container) {
     container.appendChild(renderer.view);
 
     window.addEventListener('resize', () => {
-        renderer.resize(container.offsetWidth, container.offsetHeight);
+        reScale(container);
     });
 
     function render () {
@@ -50,7 +59,7 @@ function initRenderer (stage, container) {
         requestAnimationFrame(render);
     }
 
-    renderer.resize(container.offsetWidth, container.offsetHeight);
+    reScale(container);
 
     render();
 
