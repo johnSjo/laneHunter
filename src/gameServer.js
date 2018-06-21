@@ -56,10 +56,10 @@ const EXPLOSION_PATTERNS = [
     },
     { 
         value: [
-            { x: -2, y: 0 },
             { x: -1, y: 0 },
             { x: 1, y: 0 },
-            { x: 2, y: 0 }
+            { x: 2, y: 0 },
+            { x: -2, y: 0 }
         ],
         occurrence: 10
     }
@@ -122,6 +122,8 @@ function startNewRound (game, pubsub) {
         game.invaders.push(createInvaders());
         game.balance -= game.betLevel;
         game.state = STATES.MAIN;
+        game.winnings.round = 0;
+        game.winnings.attack = 0;
 
         const clientData = { ...game, invaders: null, aliensPerRow: game.invaders[0].length };
 
@@ -131,7 +133,8 @@ function startNewRound (game, pubsub) {
     }
 }
 
-function hitAlien (aliensHitted, invaders, pos, level, winnings, betLevel) {
+function hitAlien (aliensHitted, invaders, pos, level, game) {
+    const { winnings, betLevel } = game;
     const alien = invaders[pos.row][pos.col];
     const explodeAlien = () => {
         alien.pattern.forEach((vector) => {
@@ -141,7 +144,7 @@ function hitAlien (aliensHitted, invaders, pos, level, winnings, betLevel) {
 
             if (yPos >= 0 && yPos < invaders.length && xPos >= 0 && xPos < invaders[yPos].length) {
                 if (invaders[yPos][xPos].state === ALIEN_STATES.ALIVE) {
-                    hitAlien (aliensHitted, invaders, { row: yPos, col: xPos }, level + 1, winnings, betLevel);
+                    hitAlien (aliensHitted, invaders, { row: yPos, col: xPos }, level + 1, game);
                 }
             }
         });
@@ -162,7 +165,7 @@ function hitAlien (aliensHitted, invaders, pos, level, winnings, betLevel) {
     
     alien.win = alien.value * betLevel;
     alien.pos = pos;
-    winnings.total += alien.win;
+    winnings.attack += alien.win;
 
     if (aliensHitted[level]) {
         aliensHitted[level].push(alien);
@@ -173,9 +176,10 @@ function hitAlien (aliensHitted, invaders, pos, level, winnings, betLevel) {
 
 function attackInvaders (game, lane) {
 
-    const { invaders } = game;
+    const { invaders, winnings } = game;
     const aliensHitted = {};
-    const winnings = { total: 0 };
+    
+    winnings.attack = 0;
 
     const alienHitIndex = invaders.findIndex((row) => row[lane].state === ALIEN_STATES.ALIVE);
 
@@ -186,8 +190,7 @@ function attackInvaders (game, lane) {
             invaders,
             { row: alienHitIndex, col: lane },
             0,
-            winnings,
-            game.betLevel
+            game
         );
     }
 
@@ -195,7 +198,8 @@ function attackInvaders (game, lane) {
 
     const clientInvaders = createClientInvaders(aliensHitted);
 
-    game.balance += winnings.total;
+    game.balance += winnings.attack;
+    winnings.round += winnings.attack;
 
     const aliensLeft = invaders.find((row) => {
         return row.find((alien) => alien.state === ALIEN_STATES.ALIVE);
@@ -230,8 +234,7 @@ function attackInvaders (game, lane) {
 
     const clientData = {
         ...game,
-        invaders: clientInvaders,
-        totalWinnigs: winnings.total
+        invaders: clientInvaders
     };
 
     pubsub.publish('attackResponse', JSON.stringify(clientData));
@@ -245,7 +248,11 @@ export default {
             state: STATES.IDLE,
             balance: 5000,
             betLevel: 100,
-            invaders: []
+            invaders: [],
+            winnings: {
+                round: 0,
+                attack: 0
+            }
         }
 
         pubsub.subscribeOnce('gameReady', () => {
