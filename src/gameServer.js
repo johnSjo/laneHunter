@@ -90,8 +90,6 @@ function startNewRound (game, pubsub) {
 
 function attackInvaders (game, lane) {
 
-    console.log(JSON.stringify(game, null, 4));
-
     const { invaders } = game;
 
     let totalWinnigs = 0;
@@ -149,8 +147,6 @@ function attackInvaders (game, lane) {
 
     pubsub.publish('attackResponse', JSON.stringify(clientData));
 
-    console.log(JSON.stringify(clientData, null, 4));
-
 }
 
 export default {
@@ -163,23 +159,19 @@ export default {
             invaders: []
         }
 
-        pubsub.subscribe('tryToStartNewRound', () => {
+        pubsub.subscribeOnce('gameReady', () => {
+
+            pubsub.subscribe('tryToStartNewRound', () => {
+                startNewRound(game, pubsub);
+            });
+    
+            pubsub.subscribe('fireAtInvaders', (lane) => {
+                attackInvaders(game, lane);
+            });
+
             startNewRound(game, pubsub);
         });
 
-        pubsub.subscribe('fireAtInvaders', (lane) => {
-            attackInvaders(game, lane);
-        });
-
-        // TEMP
-
-        pubsub.subscribe('startRound', (data) => {
-        });
-
-        pubsub.subscribe('attackResponse', (data) => {
-        });
-
-        pubsub.publish('tryToStartNewRound');
     }
 
 }
