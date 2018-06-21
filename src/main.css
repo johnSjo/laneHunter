@@ -1,0 +1,10 @@
+@font-face {
+    font-family: 'PressStart2P';
+    src: url('assets/fonts/PressStart2P.ttf');
+}
+
+#fontLoader {
+    display: block;
+    height: 0px;
+    font-family: 'PressStart2P';
+}
