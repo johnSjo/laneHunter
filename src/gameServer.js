@@ -8,7 +8,7 @@ const STATES = {
 
 const NR_OF_INVADERS = 3;
 
-const MAX_INVADER_ROWS = 5;
+const MAX_INVADER_ROWS = 4;
 
 const ALIEN_TYPES = [
     { value: 'standard', occurrence: 100 },
@@ -138,6 +138,7 @@ function attackInvaders (game, lane) {
 
         if (aliensReachedPlayer) {
             game.state = STATES.FINAL_ATTACK_LOOSE;
+            console.log('You loose this round');
         }
     } else {
         game.state = STATES.FINAL_ATTACK_WIN;

@@ -3,6 +3,8 @@ import { TweenLite } from 'gsap';
 import { getRenderLayer } from './renderer'
 import loader from './assetsLoader'
 
+const ALIEN_SIZE = 160
+
 function addInvaders (layer, invaders, numberOfAliens, resources) {
     const alien = `alien${Math.floor(Math.random() * 4)}`;
 
@@ -27,16 +29,25 @@ function createAlien (alien, resources, layer, col, row) {
 }
 
 function updateInvaders (invaders, data) {
+    const waitFor = [];
+
     data.forEach((row, y) => {
         row.forEach((alien, x) => {
             const invader = invaders[y][x];
 
             if (alien.state !== 'alive' && invader) {
-                invader.parent.removeChild(invader);
-                invaders[y][x] = null;
+                waitFor.push(new Promise((resolve) => {
+                    TweenLite.to(invader, 0.5, { alpha: 0, onComplete: () => {
+                        invader.parent.removeChild(invader);
+                        invaders[y][x] = null;
+                        resolve();
+                    } });
+                }));
             }
         });
     });
+
+    return Promise.all(waitFor);
 }
 
 function init (pubsub, resources) {
@@ -45,7 +56,7 @@ function init (pubsub, resources) {
 
     // TEMP
     layer.y = 100;
-    layer.x = 200;
+    layer.x = ALIEN_SIZE * 0.5;
 
     pubsub.subscribe('startRound', (data) => {
         const aliensPerRow = JSON.parse(data).invaders[0].length;
@@ -56,9 +67,11 @@ function init (pubsub, resources) {
     pubsub.subscribe('attackResponse', (data) => {
         const aliensPerRow = JSON.parse(data).invaders[0].length;
         
-        updateInvaders(invaders, JSON.parse(data).invaders);
-        TweenLite.to(layer, 1, { y: '+=176' });
-        addInvaders(layer, invaders, aliensPerRow, resources);
+        updateInvaders(invaders, JSON.parse(data).invaders).
+            then((() => {
+                addInvaders(layer, invaders, aliensPerRow, resources);
+                TweenLite.to(layer, 1, { y: '+=176' });
+            }));
     });
 }
 
