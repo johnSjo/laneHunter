@@ -19,9 +19,53 @@ function creatShips (resources, layer) {
     });
 }
 
+// TODO: move into a util if same logic is needed elsewhere
+function setupShipToggle ({ firing, moving}, pubsub, ship) {
+    pubsub.subscribe('holdShip/fire', (instigator) => {
+        if(!firing.includes(instigator)) {
+            firing.push(instigator);
+
+            if (firing.length === 1) {
+                ship.tint = '0xff7777';
+            }
+        }
+    });
+
+    pubsub.subscribe('holdShip/move', (instigator) => {
+        if(!moving.includes(instigator)) {
+            moving.push(instigator);
+        }
+    });
+
+    pubsub.subscribe('releaseShip/fire', (instigator) => {
+        const index = firing.indexOf(instigator);
+
+        if (index > -1) {
+            firing.splice(index, 1);
+
+            if (firing.length === 0) {
+                ship.tint = '0xbbffbb';
+            }
+        }
+    });
+    pubsub.subscribe('releaseShip/move', (instigator) => {
+        const index = moving.indexOf(instigator);
+
+        if (index > -1) {
+            moving.splice(index, 1);
+        }
+    });
+}
+
 function init (pubsub, resources) {
     const layer = getRenderLayer('ship');
     const ships = creatShips(resources, layer);
+    const hold = {
+        firing: [],
+        moving: []
+    };
+    const canMove = () => hold.moving.length === 0;
+    const canFire = () => hold.firing.length === 0;
 
     // TEMP
     const currentShip = ships[Math.floor(Math.random() * 2)];
@@ -30,8 +74,34 @@ function init (pubsub, resources) {
 
     currentShip.visible = true;
 
+    setupShipToggle(hold, pubsub, currentShip);
+
     pubsub.subscribe('activeLane', (index) => {
-        TweenLite.to(currentShip, 0.35, { x: index * LANE_WIDTH + 100 });
+        const newPos = index * LANE_WIDTH + 100;
+
+        if (canMove() && currentShip.x !== newPos) {
+            pubsub.publish('holdShip/fire', 'shipMoving');
+
+            TweenLite.to(currentShip, 0.35, {
+                x: newPos,
+                onComplete: () => {
+                    pubsub.publish('releaseShip/fire', 'shipMoving');
+                } 
+            });
+        }
+    });
+
+    pubsub.subscribe('tryToFireAtInvaders', (index) => {
+
+        if (canFire()) {
+            pubsub.publish('holdShip/move', 'shipFiring');
+            // play firing animation
+            // when done -> ship can move again
+            pubsub.publish('fireAtInvaders', index);
+
+            pubsub.publish('releaseShip/move', 'shipFiring');
+        }
+
     });
 }
 

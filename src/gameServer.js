@@ -71,7 +71,7 @@ function createInvaders () {
 
 function createAlien () {
     const type = getType(ALIEN_TYPES);
-    const value = type != 'dummy' ? getType(VALUES_TYPES) : 0;
+    const value = type !== 'dummy' ? getType(VALUES_TYPES) : 0;
     const pattern = type === 'explosive' ? getType(EXPLOSION_PATTERNS) : null;
 
     return {
@@ -228,6 +228,7 @@ function attackInvaders (game, lane) {
             console.log('You loose this round');
         }
     } else {
+        invaders.push(createInvaders());
         game.state = STATES.FINAL_ATTACK_WIN;
         console.log('You WIN!! this round');
     }
@@ -262,6 +263,7 @@ export default {
             });
     
             pubsub.subscribe('fireAtInvaders', (lane) => {
+                pubsub.publish('holdShip/fire', 'attacking');
                 attackInvaders(game, lane);
             });
 

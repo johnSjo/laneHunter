@@ -91,7 +91,10 @@ function init (pubsub, resources) {
         updateInvaders(invaders, JSON.parse(data).invaders).
             then((() => {
                 addInvaders(layer, invaders, aliensPerRow, resources);
-                TweenLite.to(layer, 1, { y: '+=176' });
+                TweenLite.to(layer, 1, { y: '+=176', onComplete: () => {
+                    // attack over
+                    pubsub.publish('releaseShip/fire', 'attacking');
+                } });
             }));
     });
 }

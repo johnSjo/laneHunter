@@ -23,7 +23,7 @@ function createLane (layer, index, pubsub) {
     graphics.on('pointerout', () => graphics.alpha = 0.3);
 
     graphics.on('pointerup', () => {
-        pubsub.publish('fireAtInvaders', index);
+        pubsub.publish('tryToFireAtInvaders', index);
     });
 
     layer.addChild(graphics);
