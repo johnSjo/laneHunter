@@ -1,7 +1,8 @@
 import * as PIXI from 'pixi.js';
-import { TweenLite } from 'gsap';
-import { getRenderLayer } from './renderer'
 import loader from './assetsLoader'
+import { getRenderLayer } from './renderer'
+import { TweenLite } from 'gsap';
+// import { showWin } from './winPresentation';
 
 const ALIEN_SIZE = 160
 
@@ -42,19 +43,20 @@ function createAlien (alien, resources, layer, col, row, tint) {
 function updateInvaders (invaders, data) {
     const waitFor = [];
 
-    data.forEach((row, y) => {
-        row.forEach((alien, x) => {
-            const invader = invaders[y][x];
+    Object.entries(data).forEach(([key, aliens]) => {
+        const delay = key * 0.25;
 
-            if (alien.state !== 'alive' && invader) {
-                waitFor.push(new Promise((resolve) => {
-                    TweenLite.to(invader, 0.5, { alpha: 0, onComplete: () => {
-                        invader.parent.removeChild(invader);
-                        invaders[y][x] = null;
-                        resolve();
-                    } });
-                }));
-            }
+        aliens.forEach((alien) => {
+            waitFor.push(new Promise((resolve) => {
+                const { row, col } = alien.pos;
+                const invader = invaders[row][col];
+
+                TweenLite.to(invader, 0.5, { alpha: 0, delay, onComplete: () => {
+                    invader.parent.removeChild(invader);
+                    invaders[row][col] = null;
+                    resolve();
+                } });
+            }));
         });
     });
 
@@ -64,19 +66,19 @@ function updateInvaders (invaders, data) {
 function init (pubsub, resources) {
     const layer = getRenderLayer('invaders');
     const invaders = [];
+    let aliensPerRow;
 
     // TEMP
     layer.y = 100;
     layer.x = ALIEN_SIZE * 0.5;
 
     pubsub.subscribe('startRound', (data) => {
-        const aliensPerRow = JSON.parse(data).invaders[0].length;
+        aliensPerRow = JSON.parse(data).aliensPerRow;
 
         addInvaders(layer, invaders, aliensPerRow, resources);
     });
     
     pubsub.subscribe('attackResponse', (data) => {
-        const aliensPerRow = JSON.parse(data).invaders[0].length;
         
         updateInvaders(invaders, JSON.parse(data).invaders).
             then((() => {

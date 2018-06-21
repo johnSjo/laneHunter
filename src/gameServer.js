@@ -12,12 +12,14 @@ const MAX_INVADER_ROWS = 4;
 
 const ALIEN_TYPES = [
     { value: 'standard', occurrence: 100 },
+    { value: 'explosive', occurrence: 50 },
     { value: 'dummy', occurrence: 10 }
 ];
 
 const ALIEN_STATES = {
     ALIVE: 'alive',
     KILLED: 'killed',
+    EXPLODED: 'exploded',
     DESTROYED: 'destroyed'
 }
 
@@ -33,14 +35,49 @@ const VALUES_TYPES = [
     { value: 100, occurrence: 1 }
 ];
 
+const EXPLOSION_PATTERNS = [
+    { 
+        value: [
+            { x: -1, y: 0 },
+            { x: 0, y: -1 },
+            { x: 1, y: 0 },
+            { x: 0, y: 1 }
+        ],
+        occurrence: 100
+    },
+    { 
+        value: [
+            { x: 0, y: 1 },
+            { x: 0, y: 2 },
+            { x: 0, y: 3 },
+            { x: 0, y: 4 }
+        ],
+        occurrence: 10
+    },
+    { 
+        value: [
+            { x: -2, y: 0 },
+            { x: -1, y: 0 },
+            { x: 1, y: 0 },
+            { x: 2, y: 0 }
+        ],
+        occurrence: 10
+    }
+];
+
 function createInvaders () {
     return Array(NR_OF_INVADERS).fill(null).map(() => createAlien());
 }
 
 function createAlien () {
+    const type = getType(ALIEN_TYPES);
+    const value = type != 'dummy' ? getType(VALUES_TYPES) : 0;
+    const pattern = type === 'explosive' ? getType(EXPLOSION_PATTERNS) : null;
+
     return {
-        type: getType(ALIEN_TYPES),
-        value: getType(VALUES_TYPES),
+        type,
+        value,
+        pattern,
         state: ALIEN_STATES.ALIVE,
         win: null
     }
@@ -63,13 +100,21 @@ function getType (types) {
 }
 
 function createClientInvaders (invaders) {
-    // strip everything exept 'state' and 'win from the invader info
-    return invaders.map((invaderRow) => {
-        return invaderRow.map((alien) => ({
-            state: alien.state,
-            win: alien.win
-        }));
+    // strip everything exept 'state', 'win' and 'pos' from the alien info
+
+    const clientInvaders = {};
+
+    Object.entries(invaders).forEach(([key, data]) => {
+        clientInvaders[key] = invaders[key].map((alien) => {
+            return {
+                state: alien.state,
+                win: alien.win,
+                pos: alien.pos
+            };
+        });
     });
+
+    return clientInvaders;
 }
 
 function startNewRound (game, pubsub) {
@@ -78,9 +123,7 @@ function startNewRound (game, pubsub) {
         game.balance -= game.betLevel;
         game.state = STATES.MAIN;
 
-        const clientInvaders = createClientInvaders(game.invaders);
-
-        const clientData = { ...game, invaders: clientInvaders };
+        const clientData = { ...game, invaders: null, aliensPerRow: game.invaders[0].length };
 
         pubsub.publish('startRound', JSON.stringify(clientData));
     } else {
@@ -88,32 +131,71 @@ function startNewRound (game, pubsub) {
     }
 }
 
+function hitAlien (aliensHitted, invaders, pos, level, winnings, betLevel) {
+    const alien = invaders[pos.row][pos.col];
+    const explodeAlien = () => {
+        alien.pattern.forEach((vector) => {
+            // if we have a 'alive' alien at the current vector -> hit it at level + 1
+            const xPos = vector.x + pos.col;
+            const yPos = vector.y + pos.row;
+
+            if (yPos >= 0 && yPos < invaders.length && xPos >= 0 && xPos < invaders[yPos].length) {
+                if (invaders[yPos][xPos].state === ALIEN_STATES.ALIVE) {
+                    hitAlien (aliensHitted, invaders, { row: yPos, col: xPos }, level + 1, winnings, betLevel);
+                }
+            }
+        });
+    };
+
+    switch (alien.type) {
+        case 'standard':
+            alien.state = ALIEN_STATES.KILLED;
+            break;
+        case 'dummy':
+            alien.state = ALIEN_STATES.DESTROYED;
+            break;
+        case 'explosive':
+            alien.state = ALIEN_STATES.EXPLODED;
+            explodeAlien();
+            break;
+    }
+    
+    alien.win = alien.value * betLevel;
+    alien.pos = pos;
+    winnings.total += alien.win;
+
+    if (aliensHitted[level]) {
+        aliensHitted[level].push(alien);
+    } else {
+        aliensHitted[level] = [alien];
+    }
+}
+
 function attackInvaders (game, lane) {
 
     const { invaders } = game;
-
-    let totalWinnigs = 0;
+    const aliensHitted = {};
+    const winnings = { total: 0 };
 
     const alienHitIndex = invaders.findIndex((row) => row[lane].state === ALIEN_STATES.ALIVE);
-    if (alienHitIndex > -1) {
-        const alien = invaders[alienHitIndex][lane];
 
-        switch (alien.type) {
-            case 'standard':
-                alien.win = alien.value * game.betLevel;
-                alien.state = ALIEN_STATES.KILLED;
-                totalWinnigs += alien.win;
-                break;
-            case 'dummy':
-                alien.win = 0;
-                alien.state = ALIEN_STATES.DESTROYED;
-                break;
-        }
+    // just if we hit anything at all
+    if (alienHitIndex > -1) {
+        hitAlien(
+            aliensHitted,
+            invaders,
+            { row: alienHitIndex, col: lane },
+            0,
+            winnings,
+            game.betLevel
+        );
     }
 
-    const clientInvaders = createClientInvaders(invaders);
+    console.log(JSON.stringify(aliensHitted, null, 4));
 
-    game.balance += totalWinnigs;
+    const clientInvaders = createClientInvaders(aliensHitted);
+
+    game.balance += winnings.total;
 
     const aliensLeft = invaders.find((row) => {
         return row.find((alien) => alien.state === ALIEN_STATES.ALIVE);
@@ -123,6 +205,7 @@ function attackInvaders (game, lane) {
         invaders.forEach((row) => {
             row.forEach((alien) => {
                 alien.win = null;
+                alien.pos = null;
             });
         });
         
@@ -142,9 +225,14 @@ function attackInvaders (game, lane) {
         }
     } else {
         game.state = STATES.FINAL_ATTACK_WIN;
+        console.log('You WIN!! this round');
     }
 
-    const clientData = { ...game, invaders: clientInvaders, totalWinnigs };
+    const clientData = {
+        ...game,
+        invaders: clientInvaders,
+        totalWinnigs: winnings.total
+    };
 
     pubsub.publish('attackResponse', JSON.stringify(clientData));
 
