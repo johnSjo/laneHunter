@@ -41,7 +41,11 @@ export default {
     
         // TEMP
         layer.y = -10;
-        layer.x = 0;
+        layer.x = 100;
+
+        pubsub.subscribeOnce('gameReady', () => {
+            pubsub.publish('activeLane', Math.floor(NR_OF_LANES * 0.5));
+        });
 
 
     }

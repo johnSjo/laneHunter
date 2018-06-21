@@ -2,7 +2,7 @@ import * as PIXI from 'pixi.js';
 import loader from './assetsLoader'
 import { getRenderLayer } from './renderer'
 import { TweenLite } from 'gsap';
-// import { showWin } from './winPresentation';
+import showWin from './winPresentation';
 
 const ALIEN_SIZE = 160
 
@@ -47,15 +47,23 @@ function updateInvaders (invaders, data) {
         const delay = key * 0.25;
 
         aliens.forEach((alien) => {
-            waitFor.push(new Promise((resolve) => {
-                const { row, col } = alien.pos;
-                const invader = invaders[row][col];
+            const { row, col } = alien.pos;
+            const invader = invaders[row][col];
+            
+            if (alien.win > 0) {
+                waitFor.push(showWin(invader, alien.win, delay));
+            }
 
-                TweenLite.to(invader, 0.5, { alpha: 0, delay, onComplete: () => {
-                    invader.parent.removeChild(invader);
-                    invaders[row][col] = null;
-                    resolve();
-                } });
+            waitFor.push(new Promise((resolve) => {
+                TweenLite.to(invader, 0.5, {
+                    alpha: 0,
+                    delay,
+                    onComplete: () => {
+                        invader.parent.removeChild(invader);
+                        invaders[row][col] = null;
+                        resolve();
+                    }
+                });
             }));
         });
     });
@@ -70,7 +78,7 @@ function init (pubsub, resources) {
 
     // TEMP
     layer.y = 100;
-    layer.x = ALIEN_SIZE * 0.5;
+    layer.x = ALIEN_SIZE * 0.5 + 100;
 
     pubsub.subscribe('startRound', (data) => {
         aliensPerRow = JSON.parse(data).aliensPerRow;

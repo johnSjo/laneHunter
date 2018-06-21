@@ -31,7 +31,7 @@ function init (pubsub, resources) {
     currentShip.visible = true;
 
     pubsub.subscribe('activeLane', (index) => {
-        TweenLite.to(currentShip, 0.35, { x: index * LANE_WIDTH });
+        TweenLite.to(currentShip, 0.35, { x: index * LANE_WIDTH + 100 });
     });
 }
 
