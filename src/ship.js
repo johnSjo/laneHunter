@@ -57,6 +57,37 @@ function setupShipToggle ({ firing, moving}, pubsub, ship) {
     });
 }
 
+function moveShip (canMove, currentShip, toLane, pubsub) {
+    const newPos = toLane * LANE_WIDTH + 100;
+
+    return new Promise((resolve) => {
+        if (canMove() && currentShip.x !== newPos) {
+            pubsub.publish('holdShip/fire', 'shipMoving');
+    
+            TweenLite.to(currentShip, 0.35, {
+                x: newPos,
+                onComplete: () => {
+                    pubsub.publish('releaseShip/fire', 'shipMoving');
+                    resolve();
+                } 
+            });
+        } else {
+            resolve();
+        }
+    });
+}
+
+function fireShip (canFire, pubsub, index) {
+    if (canFire()) {
+        pubsub.publish('holdShip/move', 'shipFiring');
+        // play firing animation
+        // when done -> ship can move again
+        pubsub.publish('fireAtInvaders', index);
+
+        pubsub.publish('releaseShip/move', 'shipFiring');
+    }
+}
+
 function init (pubsub, resources) {
     const layer = getRenderLayer('ship');
     const ships = creatShips(resources, layer);
@@ -77,29 +108,21 @@ function init (pubsub, resources) {
     setupShipToggle(hold, pubsub, currentShip);
 
     pubsub.subscribe('activeLane', (index) => {
-        const newPos = index * LANE_WIDTH + 100;
-
-        if (canMove() && currentShip.x !== newPos) {
-            pubsub.publish('holdShip/fire', 'shipMoving');
-
-            TweenLite.to(currentShip, 0.35, {
-                x: newPos,
-                onComplete: () => {
-                    pubsub.publish('releaseShip/fire', 'shipMoving');
-                } 
-            });
-        }
+        moveShip(canMove, currentShip, index, pubsub);
+        
     });
 
     pubsub.subscribe('tryToFireAtInvaders', (index) => {
 
-        if (canFire()) {
-            pubsub.publish('holdShip/move', 'shipFiring');
-            // play firing animation
-            // when done -> ship can move again
-            pubsub.publish('fireAtInvaders', index);
+        // if not in correct position -> move and fire
+        const inPosition = currentShip.x === (index * LANE_WIDTH + 100);
 
-            pubsub.publish('releaseShip/move', 'shipFiring');
+        if (!inPosition) {
+            moveShip(canMove, currentShip, index, pubsub).then(() => {
+                fireShip(canFire, pubsub, index);
+            });
+        } else {
+            fireShip(canFire, pubsub, index);
         }
 
     });
