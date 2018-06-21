@@ -36,6 +36,8 @@ function initRenderer (stage, container) {
         transparent: true
     });
 
+    PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.NEAREST;
+
     container.appendChild(renderer.view);
 
     window.addEventListener('resize', () => {
