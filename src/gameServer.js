@@ -41,7 +41,8 @@ function createAlien () {
     return {
         type: getType(ALIEN_TYPES),
         value: getType(VALUES_TYPES),
-        state: ALIEN_STATES.ALIVE
+        state: ALIEN_STATES.ALIVE,
+        win: null
     }
 }
 
@@ -61,16 +62,23 @@ function getType (types) {
     return value;
 }
 
+function createClientInvaders (invaders) {
+    // strip everything exept 'state' and 'win from the invader info
+    return invaders.map((invaderRow) => {
+        return invaderRow.map((alien) => ({
+            state: alien.state,
+            win: alien.win
+        }));
+    });
+}
+
 function startNewRound (game, pubsub) {
     if (game.balance - game.betLevel > 0) {
         game.invaders.push(createInvaders());
         game.balance -= game.betLevel;
         game.state = STATES.MAIN;
 
-        // strip everything exept 'state' from the invader info
-        const clientInvaders = game.invaders.map((invaderRow) => {
-            return invaderRow.map((alien) => ({ state: alien.state }));
-        });
+        const clientInvaders = createClientInvaders(game.invaders);
 
         const clientData = { ...game, invaders: clientInvaders };
 
@@ -80,28 +88,68 @@ function startNewRound (game, pubsub) {
     }
 }
 
-function attackInvaders (lane) {
+function attackInvaders (game, lane) {
 
-    // find first 'alive' aliens in the attacked lane
-        // check type to see what happens
-            // 'standard' -> kill it and award value * betLevel
-            // 'dummy' -> destroy but give no award
-    // if no 'alive' alien is found -> 
+    console.log(JSON.stringify(game, null, 4));
 
-    // create clientInvaders
+    const { invaders } = game;
 
-    // removed all killed and destroyed aliens from invaders
+    let totalWinnigs = 0;
 
-    // check if there are any 'alive' alien left
-        // yes:
-            // add a new row
-            // check if any 'alive' alien have reached MAX_INVADER_ROWS
-                // Yes: end round FINAL_ATTACK_LOOSE
-                // No: let the player attack again
-        // no:
-            // end round FINAL_ATTACK_WIN
+    const alienHitIndex = invaders.findIndex((row) => row[lane].state === ALIEN_STATES.ALIVE);
+    if (alienHitIndex > -1) {
+        const alien = invaders[alienHitIndex][lane];
 
-    // send attackResponse
+        switch (alien.type) {
+            case 'standard':
+                alien.win = alien.value * game.betLevel;
+                alien.state = ALIEN_STATES.KILLED;
+                totalWinnigs += alien.win;
+                break;
+            case 'dummy':
+                alien.win = 0;
+                alien.state = ALIEN_STATES.DESTROYED;
+                break;
+        }
+    }
+
+    const clientInvaders = createClientInvaders(invaders);
+
+    game.balance += totalWinnigs;
+
+    const aliensLeft = invaders.find((row) => {
+        return row.find((alien) => alien.state === ALIEN_STATES.ALIVE);
+    });
+
+    if (aliensLeft) {
+        invaders.forEach((row) => {
+            row.forEach((alien) => {
+                alien.win = null;
+            });
+        });
+        
+        invaders.push(createInvaders());
+
+        const aliensReachedPlayer = invaders.slice().reverse().find((row, index) => {
+            if (index >= MAX_INVADER_ROWS) {
+                return row.find((alien) => alien.state === ALIEN_STATES.ALIVE);
+            } else {
+                return false;
+            }
+        });
+
+        if (aliensReachedPlayer) {
+            game.state = STATES.FINAL_ATTACK_LOOSE;
+        }
+    } else {
+        game.state = STATES.FINAL_ATTACK_WIN;
+    }
+
+    const clientData = { ...game, invaders: clientInvaders, totalWinnigs };
+
+    pubsub.publish('attackResponse', JSON.stringify(clientData));
+
+    console.log(JSON.stringify(clientData, null, 4));
 
 }
 
@@ -120,11 +168,15 @@ export default {
         });
 
         pubsub.subscribe('fireAtInvaders', (lane) => {
-            attackInvaders(lane);
+            attackInvaders(game, lane);
         });
 
+        // TEMP
+
         pubsub.subscribe('startRound', (data) => {
-            console.log(data);
+        });
+
+        pubsub.subscribe('attackResponse', (data) => {
         });
 
         pubsub.publish('tryToStartNewRound');
