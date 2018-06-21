@@ -16,7 +16,10 @@ function createLane (layer, index, pubsub) {
     graphics.alpha = 0.3;
     graphics.interactive = true;
 
-    graphics.on('pointerover', () => graphics.alpha = 1);
+    graphics.on('pointerover', () => {
+        graphics.alpha = 1
+        pubsub.publish('activeLane', index);
+    });
     graphics.on('pointerout', () => graphics.alpha = 0.3);
 
     graphics.on('pointerup', () => {

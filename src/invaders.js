@@ -5,16 +5,26 @@ import loader from './assetsLoader'
 
 const ALIEN_SIZE = 160
 
+const ALIEN_TINT = [
+    '0xFFFF00',
+    '0xFF00FF',
+    '0x00FFFF',
+    '0xAAFF00',
+    '0xFFAA00',
+    '0xFF00AA',
+]
+
 function addInvaders (layer, invaders, numberOfAliens, resources) {
     const alien = `alien${Math.floor(Math.random() * 4)}`;
+    const tint = ALIEN_TINT[Math.floor(Math.random() * ALIEN_TINT.length)];
 
     invaders.push(Array(numberOfAliens).fill(null).map((item, index) => {
-        return createAlien(alien, resources, layer, index, invaders.length);
+        return createAlien(alien, resources, layer, index, invaders.length, tint);
     }));
 
 }
 
-function createAlien (alien, resources, layer, col, row) {
+function createAlien (alien, resources, layer, col, row, tint) {
 
     const sprite = new PIXI.Sprite(resources[alien].texture);
 
@@ -22,6 +32,7 @@ function createAlien (alien, resources, layer, col, row) {
     sprite.scale = new PIXI.Point(5, 5);
     sprite.x = sprite.width * col * 1.1;
     sprite.y = sprite.height * row * -1.1;
+    sprite.tint = tint;
 
     layer.addChild(sprite);
 

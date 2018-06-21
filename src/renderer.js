@@ -8,7 +8,7 @@ const BASE_HEIGHT = 1080;
 const LAYERS = [
     'lanes',
     'invaders',
-    'player'
+    'ship'
 ];
 
 const INTERACTIVE_LAYERS = [
