@@ -9,11 +9,13 @@ const LAYERS = [
     'lanes',
     'invaders',
     'ship',
-    'winPresentation'
+    'winPresentation',
+    'ui'
 ];
 
 const INTERACTIVE_LAYERS = [
-    'lanes'
+    'lanes',
+    'ui'
 ];
 
 const renderLayers = {};
