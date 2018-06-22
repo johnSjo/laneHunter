@@ -129,6 +129,7 @@ function startNewRound (game, pubsub) {
 
         const clientData = { ...game, invaders: null, aliensPerRow: game.invaders[0].length };
 
+        pubsub.publish('releaseShip/fire', 'loseRound');
         pubsub.publish('startRound', JSON.stringify(clientData));
     } else {
         pubsub.publish('notEnoughMoneyToPlaceBet');
@@ -227,6 +228,7 @@ function attackInvaders (game, lane) {
 
         if (aliensReachedPlayer) {
             game.state = STATES.FINAL_ATTACK_LOSE;
+            pubsub.publish('holdShip/fire', 'loseRound');
             console.log('You lose this round');
         }
     } else {
