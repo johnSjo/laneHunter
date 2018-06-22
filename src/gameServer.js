@@ -260,6 +260,8 @@ export default {
 
         pubsub.subscribeOnce('gameReady', () => {
 
+            pubsub.publish('showPlayMenu');
+
             pubsub.subscribe('tryToStartNewRound', () => {
                 startNewRound(game, pubsub);
             });

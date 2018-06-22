@@ -28,7 +28,7 @@ function addInvaders (layer, invaders, numberOfAliens, resources) {
 function createAlien (alien, resources, layer, col, row, tint) {
 
     const sprite = new PIXI.Sprite(resources[alien].texture);
-
+    
     sprite.anchor = new PIXI.Point(0.5, 0.5);
     sprite.scale = new PIXI.Point(5, 5);
     sprite.x = sprite.width * col * 1.1;
@@ -40,7 +40,46 @@ function createAlien (alien, resources, layer, col, row, tint) {
     return sprite;
 }
 
-function updateInvaders (invaders, data) {
+function makeExplosion (textures, invader, big) {
+    const layer = invader.parent;
+    const explosion = new PIXI.extras.AnimatedSprite(textures[0]);
+
+    explosion.loop = false;
+    explosion.anchor = new PIXI.Point(0.5, 0.5);
+    explosion.x = invader.x;
+    explosion.y = invader.y;
+    explosion.animationSpeed = 0.25;
+    explosion.rotation = Math.random();
+    explosion.onComplete = () => layer.removeChild(explosion);
+    explosion.play();
+
+    layer.addChild(explosion);
+
+    if (big) {
+        const nr = Math.floor(Math.random() * 3 + 1);
+
+        Array(nr).fill(null).map(() => {
+            const exp = new PIXI.extras.AnimatedSprite(textures[Math.floor(Math.random() * 2 + 1)]);
+
+            exp.loop = false;
+            exp.anchor = new PIXI.Point(0.5, 0.5);
+            exp.x = invader.x + invader.width * Math.random() - invader.width * 0.5;
+            exp.y = invader.y + invader.height * Math.random() - invader.height * 0.5;
+            exp.animationSpeed = 0.25;
+            exp.rotation = Math.random();
+            exp.visible = false;
+            exp.onComplete = () => layer.removeChild(exp);
+            TweenLite.delayedCall(Math.random() * 0.3, () => {
+                exp.visible = true;
+                exp.play();
+            });
+
+            layer.addChild(exp);
+        });
+    }
+}
+
+function updateInvaders (invaders, data, explosionTextures) {
     const waitFor = [];
 
     Object.entries(data).forEach(([key, aliens]) => {
@@ -55,11 +94,22 @@ function updateInvaders (invaders, data) {
             }
 
             waitFor.push(new Promise((resolve) => {
+                
                 TweenLite.to(invader, 0.5, {
                     alpha: 0,
                     delay,
+                    onStart: () => {
+                        switch (alien.state) {
+                            case 'killed':
+                                makeExplosion(explosionTextures, invader);
+                                break;
+                            case 'exploded':
+                                makeExplosion(explosionTextures, invader, true);
+                                break;
+                        }
+                    },
                     onComplete: () => {
-                        invader.parent.removeChild(invader);
+                        invader.parent.removeChild(invader, invader.explosion);
                         invaders[row][col] = null;
                         resolve();
                     }
@@ -74,6 +124,18 @@ function updateInvaders (invaders, data) {
 function init (pubsub, resources) {
     const layer = getRenderLayer('invaders');
     const invaders = [];
+    const explosionTextures = Array(3).fill(null).map((na, index) => {
+        return Array(13).fill(null).map((na, frame) => {
+            const frameSize = {
+                height: resources[`explosion${index}`].texture.height,
+                width: resources[`explosion${index}`].texture.width / 13
+            };
+
+            return new PIXI.Texture(resources[`explosion${index}`].texture, new PIXI.Rectangle(
+                frame * frameSize.width, 0, frameSize.width, frameSize.height
+            ));
+        });
+    });
     let aliensPerRow;
 
     // TEMP
@@ -99,7 +161,7 @@ function init (pubsub, resources) {
         const { state } = response;
         const killedAliens = response.invaders;
 
-        updateInvaders(invaders, killedAliens).
+        updateInvaders(invaders, killedAliens, explosionTextures).
             then((() => {
                 addInvaders(layer, invaders, aliensPerRow, resources);
                 TweenLite.to(layer, 1, { y: '+=176', onComplete: () => {
@@ -122,7 +184,10 @@ export default {
             { name: 'alien0', url: 'assets/enemy_1.png' },
             { name: 'alien1', url: 'assets/enemy_2.png' },
             { name: 'alien2', url: 'assets/enemy_3.png' },
-            { name: 'alien3', url: 'assets/enemy_4.png' }
+            { name: 'alien3', url: 'assets/enemy_4.png' },
+            { name: 'explosion0', url: 'assets/explosion_01_strip13.png' },
+            { name: 'explosion1', url: 'assets/explosion_02_strip13.png' },
+            { name: 'explosion2', url: 'assets/explosion_03_strip13.png' }
         ];
 
         return new Promise((resolve) => {

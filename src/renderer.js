@@ -10,7 +10,8 @@ const LAYERS = [
     'invaders',
     'ship',
     'winPresentation',
-    'ui'
+    'ui',
+    'statusBar'
 ];
 
 const INTERACTIVE_LAYERS = [
