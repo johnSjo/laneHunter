@@ -10,6 +10,7 @@
     },
     "dependencies": {
         "gsap": "^2.0.1",
+        "howler": "^2.0.12",
         "pixi.js": "^4.8.1",
         "stats.js": "^0.17.0",
         "webpack": "^4.12.0",
