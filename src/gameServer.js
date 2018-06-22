@@ -177,7 +177,7 @@ function hitAlien (aliensHitted, invaders, pos, level, game) {
     }
 }
 
-function attackInvaders (game, lane) {
+function attackInvaders (game, pubsub, lane) {
 
     const { invaders, winnings } = game;
     const aliensHitted = {};
@@ -274,7 +274,7 @@ export default {
     
             pubsub.subscribe('fireAtInvaders', (lane) => {
                 pubsub.publish('holdShip/fire', 'attacking');
-                attackInvaders(game, lane);
+                attackInvaders(game, pubsub, lane);
             });
 
         });
