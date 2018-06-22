@@ -157,7 +157,6 @@ function init (pubsub, resources) {
     });
     let aliensPerRow;
 
-    // TEMP
     layer.x = ALIEN_SIZE * 0.5 + 100;
 
     pubsub.subscribe('startRound', (data) => {

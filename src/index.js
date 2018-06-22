@@ -21,5 +21,3 @@ Promise.all([
     .then(() => {
         pubsub.publish('gameReady')
     });
-
-window.pubsub = pubsub;

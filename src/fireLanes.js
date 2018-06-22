@@ -40,7 +40,6 @@ export default {
         const lanes = Array(NR_OF_LANES).fill(null).map((na, index) => createLane(layer, index, pubsub));
         const background = new PIXI.Graphics();
 
-        // TEMP
         layer.y = 10;
         layer.x = 100;
 
