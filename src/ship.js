@@ -5,6 +5,12 @@ import loader from './assetsLoader'
 
 const LANE_WIDTH = 176;
 
+const BET_LEVELS = [10, 20, 50, 100, 200, 500, 1000, 5000];
+
+const SHIP_COLORS = ['0xffcf40', '0xffbf00', '0xbf9b30', '0xa67c00'];
+
+const SHIPS = ['ship0', 'ship1'];
+
 function creatShips (resources, layer) {
 
     return Array(2).fill(null).map((na, index) => {
@@ -12,6 +18,9 @@ function creatShips (resources, layer) {
     
         sprite.scale = new PIXI.Point(5, 5);
         sprite.visible = false;
+        sprite.tint = SHIP_COLORS[0];
+        sprite.orgTint = SHIP_COLORS[0];
+        sprite.y = 800;
     
         layer.addChild(sprite);
     
@@ -20,31 +29,31 @@ function creatShips (resources, layer) {
 }
 
 // TODO: move into a util if same logic is needed elsewhere
-function setupShipToggle ({ firing, moving}, pubsub, ship) {
+function setupShipToggle ({ firing, moving}, pubsub, ships) {
     pubsub.subscribe('holdShip/fire', (instigator) => {
         if(!firing.includes(instigator)) {
             firing.push(instigator);
 
             if (firing.length === 1) {
-                ship.tint = '0xff7777';
+                ships.forEach((ship) => (ship.tint = '0xff7777'));
             }
         }
     });
-
+    
     pubsub.subscribe('holdShip/move', (instigator) => {
         if(!moving.includes(instigator)) {
             moving.push(instigator);
         }
     });
-
+    
     pubsub.subscribe('releaseShip/fire', (instigator) => {
         const index = firing.indexOf(instigator);
-
+        
         if (index > -1) {
             firing.splice(index, 1);
-
+            
             if (firing.length === 0) {
-                ship.tint = '0xbbffbb';
+                ships.forEach((ship) => (ship.tint = ship.orgTint));
             }
         }
     });
@@ -97,15 +106,11 @@ function init (pubsub, resources) {
     };
     const canMove = () => hold.moving.length === 0;
     const canFire = () => hold.firing.length === 0;
-
-    // TEMP
-    const currentShip = ships[Math.floor(Math.random() * 2)];
-
-    layer.y = 800;
+    let currentShip = ships[Math.floor(Math.random() * 2)];
 
     currentShip.visible = true;
 
-    setupShipToggle(hold, pubsub, currentShip);
+    setupShipToggle(hold, pubsub, ships);
 
     pubsub.subscribe('activeLane', (index) => {
         moveShip(canMove, currentShip, index, pubsub);
@@ -126,6 +131,30 @@ function init (pubsub, resources) {
         }
 
     });
+
+    pubsub.subscribe('updateBetLevel', (betLevel) => {
+        const index = BET_LEVELS.indexOf(betLevel);
+        const shipIndex = Math.floor(index / BET_LEVELS.length * ships.length);
+
+        TweenLite.to(currentShip, 0.5, { y: 1100, onComplete: () => {
+            const xPos = currentShip.x;
+
+            currentShip.visible = false;
+            
+            currentShip = ships[shipIndex];
+            currentShip.orgTint = SHIP_COLORS[index - shipIndex * SHIP_COLORS.length];
+            
+            currentShip.visible = true;
+            currentShip.tint = currentShip.orgTint;
+            currentShip.x = xPos;
+
+            TweenLite.fromTo(currentShip, 0.5, { y: 1100 }, { y: 800 });
+
+        } });
+
+
+    });
+
 }
 
 export default {

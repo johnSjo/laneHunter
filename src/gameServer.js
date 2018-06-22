@@ -6,6 +6,8 @@ const STATES = {
     FINAL_ATTACK_LOOSE: 'finalAttackLoose'
 }
 
+const BET_LEVELS = [10, 20, 50, 100, 200, 500, 1000, 5000];
+
 const NR_OF_INVADERS = 3;
 
 const MAX_INVADER_ROWS = 4;
@@ -119,7 +121,7 @@ function createClientInvaders (invaders) {
 
 function startNewRound (game, pubsub) {
     if (game.balance - game.betLevel > 0) {
-        game.invaders.push(createInvaders());
+        game.invaders = [createInvaders()];
         game.balance -= game.betLevel;
         game.state = STATES.MAIN;
         game.winnings.round = 0;
@@ -247,7 +249,7 @@ export default {
     init (pubsub) {
         const game = {
             state: STATES.IDLE,
-            balance: 5000,
+            balance: 50000,
             betLevel: 100,
             invaders: [],
             winnings: {
@@ -261,13 +263,18 @@ export default {
             pubsub.subscribe('tryToStartNewRound', () => {
                 startNewRound(game, pubsub);
             });
+
+            pubsub.subscribe('updateBetLevel', (bet) => {
+                if (BET_LEVELS.includes(bet)) {
+                    game.betLevel = bet;
+                }
+            });
     
             pubsub.subscribe('fireAtInvaders', (lane) => {
                 pubsub.publish('holdShip/fire', 'attacking');
                 attackInvaders(game, lane);
             });
 
-            startNewRound(game, pubsub);
         });
 
     }
