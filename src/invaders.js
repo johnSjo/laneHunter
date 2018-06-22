@@ -79,6 +79,22 @@ function makeExplosion (textures, invader, big) {
     }
 }
 
+function blowUpThePlayer (layer, textures) {
+    Array(10).fill(null).forEach((na, index) => {
+        const fakeInvader = {
+            parent: layer,
+            x: Math.random() * 530 - 80,
+            y: -layer.y + 850,
+            width: 160,
+            height: 160
+        }
+
+        TweenLite.delayedCall(Math.random() * index * 0.2, () => {
+            makeExplosion(textures, fakeInvader, true);
+        });
+    });
+}
+
 function updateInvaders (invaders, data, explosionTextures) {
     const waitFor = [];
 
@@ -168,7 +184,8 @@ function init (pubsub, resources) {
                     // attack over
                     pubsub.publish('releaseShip/fire', 'attacking');
                     
-                    if (state === 'finalAttackLoose') {
+                    if (state === 'finalAttackLose') {
+                        blowUpThePlayer(layer, explosionTextures);
                         pubsub.publish('showPlayMenu');
                     }
                 } });

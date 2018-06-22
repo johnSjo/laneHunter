@@ -3,7 +3,7 @@ const STATES = {
     IDLE: 'idle',
     MAIN: 'main',
     FINAL_ATTACK_WIN: 'finalAttackWin',
-    FINAL_ATTACK_LOOSE: 'finalAttackLoose'
+    FINAL_ATTACK_LOSE: 'finalAttackLose'
 }
 
 const BET_LEVELS = [10, 20, 50, 100, 200, 500, 1000, 5000];
@@ -226,8 +226,8 @@ function attackInvaders (game, lane) {
         });
 
         if (aliensReachedPlayer) {
-            game.state = STATES.FINAL_ATTACK_LOOSE;
-            console.log('You loose this round');
+            game.state = STATES.FINAL_ATTACK_LOSE;
+            console.log('You lose this round');
         }
     } else {
         invaders.push(createInvaders());
