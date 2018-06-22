@@ -36,13 +36,18 @@ function createBetSelector (layer, pubsub) {
         betText.anchor = new PIXI.Point(1, 0.5);
         betText.rotation = -0.1;
         betText.x = 710;
-        betText.y = 700 - index * betText.height * 1.1;
+        betText.y = 700 - index * betText.height * 1.1 + 1100;
         betText.interactive = true;
 
         betText.on('pointerup', () => {
             pubsub.publish('updateBetLevel', bet);
-            betText.blendMode = PIXI.BLEND_MODES.ADD;
-            betText.scale = { x: 1.1, y: 1.1 };
+            betText.blendMode = PIXI.BLEND_MODES.NORMAL;
+            betText.scale = { x: 1, y: 1 };
+        });
+
+        betText.on('pointerupoutside', () => {
+            betText.blendMode = PIXI.BLEND_MODES.NORMAL;
+            betText.scale = { x: 1, y: 1 };
         });
 
         betText.on('pointerover', () => {
@@ -85,7 +90,7 @@ function createPlayButton (layer, pubsub) {
     });
 
     playButton.anchor = new PIXI.Point(0.5, 0.5);
-    playButton.x = 728 / 2;
+    playButton.x = 728 / 2 - 800;
     playButton.y = 650;
     playButton.interactive = true;
 
@@ -120,6 +125,59 @@ function createPlayButton (layer, pubsub) {
     return playButton;
 }
 
+function createStatusBar (pubsub) {
+    const layer = getRenderLayer('statusBar');
+    const style = {
+        fontFamily: 'PressStart2P',
+        fill: ['#ef2f22', '#de1f11'],
+        fontSize: 20,
+        align: 'center',
+        lineJoin: 'miter',
+        fontWeight: 'bold',
+        stroke: '#580903',
+        strokeThickness: 3,
+        dropShadow: true,
+        dropShadowAngle: Math.PI * 0.4,
+        dropShadowColor: '#292121',
+        dropShadowDistance: 2.5
+    };
+    const numbersStyle = {
+        ...style,
+        fill: ['0xffcf40', '0xffbf00', '0xbf9b30'],
+        fontSize: 25,
+        stroke: '0xa67c00',
+        dropShadow: false
+    };
+    const balance = new PIXI.Text('Balance:', style);
+    const betLevel = new PIXI.Text('Bet:', style);
+    const balanceValue = new PIXI.Text('50000', numbersStyle);
+    const betValue = new PIXI.Text('100', numbersStyle);
+
+    const anchor = new PIXI.Point(0, 0.5);
+
+    layer.y = 1020;
+    balance.x = 40;
+    balance.anchor = anchor;
+    betLevel.x = 500;
+    betLevel.anchor = anchor;
+    balanceValue.x = balance.x + balance.width;
+    balanceValue.anchor = anchor;
+    betValue.x = betLevel.x + betLevel.width;
+    betValue.anchor = anchor;
+
+    pubsub.subscribe('updateBetLevel', (bet) => {
+        betValue.text = bet;
+    });
+
+    pubsub.subscribe('attackResponse', (data) => {
+        const { balance } = JSON.parse(data);
+
+        balanceValue.text = balance;
+    });
+
+    layer.addChild(balance, betLevel, balanceValue, betValue);
+}
+
 export default {
 
     init (pubsub) {
@@ -128,6 +186,8 @@ export default {
 
         const { bets, backplate } = createBetSelector(layer, pubsub);
         const playButton = createPlayButton(layer, pubsub);
+        
+        createStatusBar(pubsub);
 
         pubsub.subscribe('showPlayMenu', () => {
             layer.visible = true;
