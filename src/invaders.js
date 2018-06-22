@@ -40,7 +40,7 @@ function createAlien (alien, resources, layer, col, row, tint) {
     return sprite;
 }
 
-function makeExplosion (textures, invader, big) {
+function makeExplosion (textures, invader, big, pubsub) {
     const layer = invader.parent;
     const explosion = new PIXI.extras.AnimatedSprite(textures[0]);
 
@@ -52,6 +52,8 @@ function makeExplosion (textures, invader, big) {
     explosion.rotation = Math.random();
     explosion.onComplete = () => layer.removeChild(explosion);
     explosion.play();
+
+    pubsub.publish('sound/explosion');
 
     layer.addChild(explosion);
 
@@ -72,6 +74,7 @@ function makeExplosion (textures, invader, big) {
             TweenLite.delayedCall(Math.random() * 0.3, () => {
                 exp.visible = true;
                 exp.play();
+                pubsub.publish('sound/explosion');
             });
 
             layer.addChild(exp);
@@ -79,7 +82,7 @@ function makeExplosion (textures, invader, big) {
     }
 }
 
-function blowUpThePlayer (layer, textures) {
+function blowUpThePlayer (layer, textures, pubsub) {
     Array(10).fill(null).forEach((na, index) => {
         const fakeInvader = {
             parent: layer,
@@ -90,12 +93,12 @@ function blowUpThePlayer (layer, textures) {
         }
 
         TweenLite.delayedCall(Math.random() * index * 0.2, () => {
-            makeExplosion(textures, fakeInvader, true);
+            makeExplosion(textures, fakeInvader, true, pubsub);
         });
     });
 }
 
-function updateInvaders (invaders, data, explosionTextures) {
+function updateInvaders (invaders, data, explosionTextures, pubsub) {
     const waitFor = [];
 
     Object.entries(data).forEach(([key, aliens]) => {
@@ -117,10 +120,10 @@ function updateInvaders (invaders, data, explosionTextures) {
                     onStart: () => {
                         switch (alien.state) {
                             case 'killed':
-                                makeExplosion(explosionTextures, invader);
+                                makeExplosion(explosionTextures, invader, false, pubsub);
                                 break;
                             case 'exploded':
-                                makeExplosion(explosionTextures, invader, true);
+                                makeExplosion(explosionTextures, invader, true, pubsub);
                                 break;
                         }
                     },
@@ -177,7 +180,7 @@ function init (pubsub, resources) {
         const { state } = response;
         const killedAliens = response.invaders;
 
-        updateInvaders(invaders, killedAliens, explosionTextures).
+        updateInvaders(invaders, killedAliens, explosionTextures, pubsub).
             then((() => {
                 addInvaders(layer, invaders, aliensPerRow, resources);
                 TweenLite.to(layer, 1, { y: '+=176', onComplete: () => {
@@ -185,7 +188,7 @@ function init (pubsub, resources) {
                     pubsub.publish('releaseShip/fire', 'attacking');
                     
                     if (state === 'finalAttackLose') {
-                        blowUpThePlayer(layer, explosionTextures);
+                        blowUpThePlayer(layer, explosionTextures, pubsub);
                         pubsub.publish('showPlayMenu');
                     }
                 } });

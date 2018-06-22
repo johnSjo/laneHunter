@@ -197,8 +197,6 @@ function attackInvaders (game, lane) {
         );
     }
 
-    console.log(JSON.stringify(aliensHitted, null, 4));
-
     const clientInvaders = createClientInvaders(aliensHitted);
 
     game.balance += winnings.attack;
