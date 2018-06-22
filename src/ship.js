@@ -68,7 +68,7 @@ function makeFireAnimation (type, sprite) {
             break;
     }
 
-    return () => {
+    return (pubsub) => {
         beams.forEach((beam) => {
             const time = 0.3;
 
@@ -80,6 +80,8 @@ function makeFireAnimation (type, sprite) {
             TweenLite.to(beam, time * 0.5, { height: 0, delay: time * 0.5, onComplete: () => {
                 beam.visible = false;
             }});
+
+            pubsub.publish('sound/weapon');
 
         });
     };
@@ -145,7 +147,7 @@ function moveShip (canMove, currentShip, toLane, pubsub) {
 
 function fireShip (canFire, pubsub, index, fireAnimation) {
     if (canFire()) {
-        fireAnimation();
+        fireAnimation(pubsub);
         pubsub.publish('fireAtInvaders', index);
     }
 }
