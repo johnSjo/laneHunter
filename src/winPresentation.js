@@ -29,6 +29,8 @@ export default function showWin (invader, winValue, delay) {
     win.alpha = 0;
     win.rotation = -0.1;
 
+    win.width = Math.min(win.width, 190);
+
     return new Promise((resolve) => {
         TweenLite.to(win, 1.5, {
             alpha: 1,

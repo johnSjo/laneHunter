@@ -77,23 +77,38 @@ function init (pubsub, resources) {
     let aliensPerRow;
 
     // TEMP
-    layer.y = 100;
     layer.x = ALIEN_SIZE * 0.5 + 100;
 
     pubsub.subscribe('startRound', (data) => {
         aliensPerRow = JSON.parse(data).aliensPerRow;
+        invaders.forEach((row) => {
+            row.forEach((alien) => {
+                if (alien) {
+                    alien.parent.removeChild(alien);
+                }
+            });
+        });
+        invaders.length = 0;
 
         addInvaders(layer, invaders, aliensPerRow, resources);
+        TweenLite.fromTo(layer, 1, { y: -100 }, { y: '+=200' });
     });
     
     pubsub.subscribe('attackResponse', (data) => {
-        
-        updateInvaders(invaders, JSON.parse(data).invaders).
+        const response = JSON.parse(data);
+        const { state } = response;
+        const killedAliens = response.invaders;
+
+        updateInvaders(invaders, killedAliens).
             then((() => {
                 addInvaders(layer, invaders, aliensPerRow, resources);
                 TweenLite.to(layer, 1, { y: '+=176', onComplete: () => {
                     // attack over
                     pubsub.publish('releaseShip/fire', 'attacking');
+                    
+                    if (state === 'finalAttackLoose') {
+                        pubsub.publish('showPlayMenu');
+                    }
                 } });
             }));
     });
