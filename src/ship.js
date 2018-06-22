@@ -9,8 +9,6 @@ const BET_LEVELS = [10, 20, 50, 100, 200, 500, 1000, 5000];
 
 const SHIP_COLORS = ['0xffcf40', '0xffbf00', '0xbf9b30', '0xa67c00'];
 
-const SHIPS = ['ship0', 'ship1'];
-
 function creatShips (resources, layer) {
 
     return Array(2).fill(null).map((na, index) => {
@@ -21,11 +19,70 @@ function creatShips (resources, layer) {
         sprite.tint = SHIP_COLORS[0];
         sprite.orgTint = SHIP_COLORS[0];
         sprite.y = 800;
+        sprite.fireAnimation = makeFireAnimation(index, sprite);
     
         layer.addChild(sprite);
     
         return sprite;
     });
+}
+
+function makeFireAnimation (type, sprite) {
+    let positions;
+    let beams;
+
+    switch (type) {
+        case 0:
+            positions = [{ x: 3, y: -8 }, { x: 9, y: -5 }, { x: 22, y: -5 }, { x: 28, y: -8 }];
+            beams = positions.map((pos) => {
+                const graphics = new PIXI.Graphics();
+
+                graphics.beginFill(0xffeeee);
+                graphics.lineStyle(2, 0xff0000);
+                graphics.drawRect(pos.x, pos.y, 1, 40);
+                graphics.blendMode = PIXI.BLEND_MODES.ADD;
+                graphics.scale.y = -1;
+                graphics.visible = false;
+
+                sprite.addChild(graphics);
+
+                return graphics;
+            });
+            break;
+        case 1:
+            positions = [{ x: 6, y: -5 }, { x: 23, y: -5 }];
+            beams = positions.map((pos) => {
+                const graphics = new PIXI.Graphics();
+
+                graphics.beginFill(0xffeeee);
+                graphics.lineStyle(2.5, 0xff0000);
+                graphics.drawRect(pos.x, pos.y, 3, 40);
+                graphics.blendMode = PIXI.BLEND_MODES.ADD;
+                graphics.scale.y = -1;
+                graphics.visible = false;
+
+                sprite.addChild(graphics);
+
+                return graphics;
+            });
+            break;
+    }
+
+    return () => {
+        beams.forEach((beam) => {
+            const time = 0.3;
+
+            beam.visible = true;
+            beam.y = 0;
+
+            TweenLite.to(beam, time, { y: `-=200` });
+            TweenLite.fromTo(beam, time * 0.5, { height: 0 }, { height: `+=100` });
+            TweenLite.to(beam, time * 0.5, { height: 0, delay: time * 0.5, onComplete: () => {
+                beam.visible = false;
+            }});
+
+        });
+    };
 }
 
 // TODO: move into a util if same logic is needed elsewhere
@@ -86,14 +143,10 @@ function moveShip (canMove, currentShip, toLane, pubsub) {
     });
 }
 
-function fireShip (canFire, pubsub, index) {
+function fireShip (canFire, pubsub, index, fireAnimation) {
     if (canFire()) {
-        pubsub.publish('holdShip/move', 'shipFiring');
-        // play firing animation
-        // when done -> ship can move again
+        fireAnimation();
         pubsub.publish('fireAtInvaders', index);
-
-        pubsub.publish('releaseShip/move', 'shipFiring');
     }
 }
 
@@ -106,7 +159,7 @@ function init (pubsub, resources) {
     };
     const canMove = () => hold.moving.length === 0;
     const canFire = () => hold.firing.length === 0;
-    let currentShip = ships[Math.floor(Math.random() * 2)];
+    let currentShip = ships[0];
 
     currentShip.visible = true;
 
@@ -124,10 +177,10 @@ function init (pubsub, resources) {
 
         if (!inPosition) {
             moveShip(canMove, currentShip, index, pubsub).then(() => {
-                fireShip(canFire, pubsub, index);
+                fireShip(canFire, pubsub, index, currentShip.fireAnimation);
             });
         } else {
-            fireShip(canFire, pubsub, index);
+            fireShip(canFire, pubsub, index, currentShip.fireAnimation);
         }
 
     });
